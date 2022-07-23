@@ -29,7 +29,7 @@ contract Tictactoe {
 
     error Unauthorized();
 
-    uint256 gameBoard = 1;
+    uint256 gameBoard = 0;
 
     //     1. 00 00 00
     //        00 00 00
