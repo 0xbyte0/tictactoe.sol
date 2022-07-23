@@ -100,7 +100,11 @@ contract Tictactoe {
         /// gameBoard = 1
         /// gameBoard << 20 => bin: 0b100000000000000000000 
         ///                    hex: 0x100000
-        gameBoard = gameBoard << 20;
+        if(gameBoard > 0){
+            gameBoard = gameBoard << 21 | 1 << 20;
+        }else{
+            gameBoard = gameBoard | 1 << 20;
+        }
         return gameBoard;
     }
 
