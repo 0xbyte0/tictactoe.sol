@@ -14,4 +14,4 @@ Python is required.
 
 `brownie run scripts/deploy.py`
 
-`brownie tests`
+`brownie test`
