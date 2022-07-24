@@ -97,7 +97,7 @@ contract Tictactoe {
     /// @notice a new game is created by appending 21bits to the current board 
     function newGame() external isPlayer(msg.sender) returns (uint256){
 
-        /// gameBoard = 1
+        /// gameBoard = 0
         /// gameBoard << 20 => bin: 0b100000000000000000000 
         ///                    hex: 0x100000
         if(gameBoard > 0){
