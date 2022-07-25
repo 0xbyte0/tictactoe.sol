@@ -93,7 +93,6 @@ contract Tictactoe {
         return playerAddr == playerOne ? 0 : 1;
     } 
 
-
     /// @notice a new game is created by appending 21bits to the current board 
     function newGame() external isPlayer(msg.sender) returns (uint256){
 
