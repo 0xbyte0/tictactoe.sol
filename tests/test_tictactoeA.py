@@ -1,4 +1,5 @@
-from brownie import Tictactoe, accounts
+from brownie import accounts
+from brownie import TictactoeA as Tictactoe
 
 """
 21 bits for each game

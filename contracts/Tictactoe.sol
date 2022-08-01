@@ -83,8 +83,9 @@ contract Tictactoe {
     modifier moveIsValid(uint256 _move) {
         uint p1 = _move << 1;
         uint p2 = p1 + 1;
+        uint _gameBoard = gameBoard;
 
-        require(!(((gameBoard >> p1) & 1) == 1 || ((gameBoard >> p2) & 1) == 1) ,"invalid move");
+        require(!(((_gameBoard >> p1) & 1) == 1 || ((_gameBoard >> p2) & 1) == 1) ,"invalid move");
         require(_move < 9 ,"invalid move");
         _;
     }
@@ -99,12 +100,16 @@ contract Tictactoe {
         /// gameBoard = 0
         /// gameBoard << 20 => bin: 0b100000000000000000000 
         ///                    hex: 0x100000
-        if(gameBoard > 0){
-            gameBoard = gameBoard << 21 | 1 << 20;
+        uint256 _gameBoard = gameBoard;
+
+        if(_gameBoard > 0){
+            _gameBoard = _gameBoard << 21 | 1 << 20;
         }else{
-            gameBoard = gameBoard | 1 << 20;
+            _gameBoard = _gameBoard | 1 << 20;
         }
-        return gameBoard;
+
+        gameBoard = _gameBoard;
+        return _gameBoard;
     }
 
 
@@ -131,8 +136,10 @@ contract Tictactoe {
         /// [1 0] => Game is still on
         /// [1 1] => Player 0 won
         /// [0 1] => player 1 won
+
+        uint256 _gameBoard = gameBoard;
         
-        require(gameBoard >> 19 & 1 == 0 && gameBoard >> 20 & 1 == 1, "Game has ended");
+        require(_gameBoard >> 19 & 1 == 0 && _gameBoard >> 20 & 1 == 1, "Game has ended");
 
         uint256 _playerId = playerId(msg.sender);
         
@@ -153,7 +160,7 @@ contract Tictactoe {
         /// Then we'd just flip the bit there, there using
         /// (1 << (position << 1))
 
-        gameBoard = gameBoard ^ (1 << ((_move << 1) + _playerId));
+        _gameBoard = _gameBoard ^ (1 << ((_move << 1) + _playerId));
 
         // uint256 moveby = (_move << 1) + _playerId;
         // gameBoard = gameBoard | ( 1 << moveby);
@@ -166,7 +173,7 @@ contract Tictactoe {
         /// flips the bit for the next  player
         /// 0 => `player1` turn
         /// 1 => `player2` turn
-        gameBoard = gameBoard ^ (1 << 18);
+        gameBoard = _gameBoard ^ (1 << 18);
 
         /// checks if `_playerId` has made win
         /// 1 => means the `_playerId` has won
@@ -187,94 +194,94 @@ contract Tictactoe {
     function checkState(uint _playerId) public view returns (uint256){
         uint256 _gameBoard = gameBoard;
 
+        /// These are the HORIZONTAL wins
+        /// 1. x  x  x  2. | 0  0  0  3. | 0  0  0
+        ///    0  0  0     | x  x  x     | 0  0  0
+        ///    0  0  0     | 0  0  0     | x  x  x
+        ///
+        /// For player 0
+        /// H1. 10 10 10
+        ///     00 00 00 =   000000000000010101
+        ///     00 00 00
+        ///
+        /// H2. 00 00 00
+        ///     10 10 10 =   000000010101000000 : H1 << 6
+        ///     00 00 00
+        ///
+        /// H3. 00 00 00
+        ///     00 00 00 =   010101000000000000 : H2 << 6 or H1 << 12
+        ///     10 10 10
+        ///
+        /// HORIZONTAL_MASK / 3 == H1
+        ///
+        /// There is probaly a better way to do this, would figure
+        /// that out later
+
+        if ((_gameBoard & HORIZONTAL_MASK) == ((HORIZONTAL_MASK / 3) << _playerId)){
+            return 1;
+        }else if((_gameBoard & (HORIZONTAL_MASK << 6)) == ((HORIZONTAL_MASK / 3) << _playerId) << 6){
+            return 1;
+        }else if((_gameBoard & (HORIZONTAL_MASK << 12)) == ((HORIZONTAL_MASK / 3) << _playerId) << 12){
+            return 1;
+        }
+
+        /// These are the VERTICAL wins
+        /// 1. x  0  0  2. | 0  x  0  3. | 0  0  x
+        ///    x  0  0     | 0  x  0     | 0  0  x
+        ///    x  0  0     | 0  x  0     | 0  0  x
+        ///
+        /// For player 0
+        /// V1. 10 00 00
+        ///     10 00 00 =   000001000001000001
+        ///     10 00 00
+        ///
+        /// V2. 00 10 00
+        ///     00 10 00 =   000100000100000100 : V1 << 2
+        ///     00 10 00
+        ///
+        /// V3. 00 00 10
+        ///     00 00 10 =   010000010000010000 : V2 << 2 or V1 << 4
+        ///     00 00 10
+        ///
+        /// VERTICAL_MASK / 3 == V1
+
+        if((_gameBoard & VERTICAL_MASK) == (VERTICAL_MASK / 3) << _playerId){
+            return 1;
+        }else if((_gameBoard & (VERTICAL_MASK << 2)) == (VERTICAL_MASK / 3) << _playerId << 2){
+            return 1;
+        }else if((_gameBoard & (VERTICAL_MASK << 4)) == (VERTICAL_MASK / 3) << _playerId << 4){
+            return 1;
+        }
+
+        /// These are the DIAGONAL wins
+        /// 1. x  0  0  2. | 0  0  x
+        ///    0  x  0     | 0  x  0 
+        ///    0  0  x     | x  0  0  
+        ///
+        /// For player 0
+        /// D1. 10 00 00
+        ///     00 10 00 =   010000000100000001
+        ///     00 00 10
+        ///
+        /// D2. 00 00 10
+        ///     00 10 00 =   000001000100010000
+        ///     10 00 00
+        ///
+        /// BL_TO_TR_DIAGONAL_MASK / 3 == D1
+        /// BR_TO_TL_DIAGONAL_MASK / 3 == D2
+
+        if ((_gameBoard & BR_TO_TL_DIAGONAL_MASK) == (BR_TO_TL_DIAGONAL_MASK / 3) << _playerId){
+            return 1;
+        }
+
+        if ((_gameBoard & BL_TO_TR_DIAGONAL_MASK) == (BL_TO_TR_DIAGONAL_MASK / 3) << _playerId){
+            return 1;
+        }
+
         unchecked {
-            /// These are the HORIZONTAL wins
-            /// 1. x  x  x  2. | 0  0  0  3. | 0  0  0
-            ///    0  0  0     | x  x  x     | 0  0  0
-            ///    0  0  0     | 0  0  0     | x  x  x
-            ///
-            /// For player 0
-            /// H1. 10 10 10
-            ///     00 00 00 =   000000000000010101
-            ///     00 00 00
-            ///
-            /// H2. 00 00 00
-            ///     10 10 10 =   000000010101000000 : H1 << 6
-            ///     00 00 00
-            ///
-            /// H3. 00 00 00
-            ///     00 00 00 =   010101000000000000 : H2 << 6 or H1 << 12
-            ///     10 10 10
-            ///
-            /// HORIZONTAL_MASK / 3 == H1
-            ///
-            /// There is probaly a better way to do this, would figure
-            /// that out later
-
-            if ((_gameBoard & HORIZONTAL_MASK) == ((HORIZONTAL_MASK / 3) << _playerId)){
-                return 1;
-            }else if((_gameBoard & (HORIZONTAL_MASK << 6)) == ((HORIZONTAL_MASK / 3) << _playerId) << 6){
-                return 1;
-            }else if((_gameBoard & (HORIZONTAL_MASK << 12)) == ((HORIZONTAL_MASK / 3) << _playerId) << 12){
-                return 1;
-            }
-
-            /// These are the VERTICAL wins
-            /// 1. x  0  0  2. | 0  x  0  3. | 0  0  x
-            ///    x  0  0     | 0  x  0     | 0  0  x
-            ///    x  0  0     | 0  x  0     | 0  0  x
-            ///
-            /// For player 0
-            /// V1. 10 00 00
-            ///     10 00 00 =   000001000001000001
-            ///     10 00 00
-            ///
-            /// V2. 00 10 00
-            ///     00 10 00 =   000100000100000100 : V1 << 2
-            ///     00 10 00
-            ///
-            /// V3. 00 00 10
-            ///     00 00 10 =   010000010000010000 : V2 << 2 or V1 << 4
-            ///     00 00 10
-            ///
-            /// VERTICAL_MASK / 3 == V1
-
-            if((_gameBoard & VERTICAL_MASK) == (VERTICAL_MASK / 3) << _playerId){
-                return 1;
-            }else if((_gameBoard & (VERTICAL_MASK << 2)) == (VERTICAL_MASK / 3) << _playerId << 2){
-                return 1;
-            }else if((_gameBoard & (VERTICAL_MASK << 4)) == (VERTICAL_MASK / 3) << _playerId << 4){
-                return 1;
-            }
-
-            /// These are the DIAGONAL wins
-            /// 1. x  0  0  2. | 0  0  x
-            ///    0  x  0     | 0  x  0 
-            ///    0  0  x     | x  0  0  
-            ///
-            /// For player 0
-            /// D1. 10 00 00
-            ///     00 10 00 =   010000000100000001
-            ///     00 00 10
-            ///
-            /// D2. 00 00 10
-            ///     00 10 00 =   000001000100010000
-            ///     10 00 00
-            ///
-            /// BL_TO_TR_DIAGONAL_MASK / 3 == D1
-            /// BR_TO_TL_DIAGONAL_MASK / 3 == D2
-
-            if ((gameBoard & BR_TO_TL_DIAGONAL_MASK) == (BR_TO_TL_DIAGONAL_MASK / 3) << _playerId){
-                return 1;
-            }
-
-            if ((gameBoard & BL_TO_TR_DIAGONAL_MASK) == (BL_TO_TR_DIAGONAL_MASK / 3) << _playerId){
-                return 1;
-            }
-
             /// Checks if all fields has been played
             for(uint x=0; x < 9; x++){
-                if(~(_gameBoard & 0xF) & 0x3 == 0x3)  {
+                if(_gameBoard & 1 == 0 && _gameBoard & 2 == 0)  {
                     return 0;
                 } 
                 _gameBoard = _gameBoard >> 2;
