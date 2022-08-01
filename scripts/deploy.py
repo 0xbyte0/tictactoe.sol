@@ -16,8 +16,14 @@ def deploy_game():
     playerOne, playerTwo, *_ = accounts
     tictactoe = Tictactoe.deploy(playerTwo, {"from": playerOne})
 
-    gameBoard = tictactoe.newGame()
-    print(format_game(gameBoard))
+    tictactoe.newGame()
+
+    tictactoe.move(0, {"from": playerOne})
+    tictactoe.move(1, {"from": playerTwo})
+    tictactoe.move(3, {"from": playerOne})
+    tictactoe.move(4, {"from": playerTwo})
+    game_state = tictactoe.move(6, {"from": playerOne})
+    game_state.wait(1)
 
 def main():
     deploy_game()
